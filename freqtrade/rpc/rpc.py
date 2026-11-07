@@ -253,6 +253,10 @@ class RPC:
                     current_rate = trade.close_rate or 0.0
                     current_profit = trade.close_profit or 0.0
                     current_profit_abs = trade.close_profit_abs or 0.0
+                    # close_profit(_abs) are cumulative for closed trades and
+                    # already include realized_profit.
+                    total_profit_abs = current_profit_abs
+                    total_profit_ratio = current_profit
 
                 # Calculate fiat profit
                 if not isnan(current_profit_abs) and self._fiat_converter:

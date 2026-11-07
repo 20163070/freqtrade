@@ -229,6 +229,31 @@ def test_rpc_trade_status(default_conf, ticker, fee, mocker) -> None:
     assert results[0] == response_norate
 
 
+def test_rpc_trade_status_closed_trade(default_conf, ticker, fee, mocker) -> None:
+    mocker.patch("freqtrade.rpc.telegram.Telegram", MagicMock())
+    mocker.patch.multiple(
+        EXMS,
+        fetch_ticker=ticker,
+        get_fee=fee,
+    )
+
+    freqtradebot = get_patched_freqtradebot(mocker, default_conf)
+    patch_get_signal(freqtradebot)
+    rpc = RPC(freqtradebot)
+
+    create_mock_trades_usdt(fee)
+
+    trades = Trade.get_trades([Trade.is_open.is_(False)]).all()
+    assert len(trades) > 0
+    for trade in trades:
+        results = rpc._rpc_trade_status([trade.id])
+        assert results[0]["profit_abs"] == pytest.approx(trade.close_profit_abs)
+        # Total profit for closed trades is cumulative - equal to close_profit(_abs),
+        # not zero.
+        assert results[0]["total_profit_abs"] == pytest.approx(trade.close_profit_abs)
+        assert results[0]["total_profit_ratio"] == pytest.approx(trade.close_profit)
+
+
 def test_rpc_status_table(default_conf, ticker, fee, mocker, time_machine) -> None:
     time_machine.move_to("2024-05-10 11:15:00 +00:00", tick=False)
 
